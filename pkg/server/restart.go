@@ -22,11 +22,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/containerd/cri/pkg/constants"
+
 	"github.com/containerd/containerd"
 	containerdio "github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	containerdimages "github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
+	containerdnamespaces "github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/typeurl"
 	"github.com/docker/docker/pkg/system"
@@ -52,6 +55,28 @@ import (
 
 // recover recovers system state from containerd and status checkpoint.
 func (c *criService) recover(ctx context.Context) error {
+	// Recover managed namespaces.
+	namespaces, err := c.client.NamespaceService().List(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to list namespaces")
+	}
+	for _, ns := range namespaces {
+		labels, err := c.client.NamespaceService().Labels(ctx, ns)
+		if err != nil {
+			log.G(ctx).WithError(err).Errorf("Failed to list labels for namespace %q", ns)
+			continue
+		}
+		managed, ok := labels[criContainerdPrefix]
+		switch {
+		case !ok && ns == constants.K8sContainerdNamespace:
+			fallthrough
+		case managed == `managed`:
+			if err := c.client.NamespaceService().SetLabel(containerdnamespaces.WithNamespace(ctx, ns), ns, criContainerdPrefix, "managed"); err != nil {
+				log.G(ctx).WithError(err).Errorf("Failed to set managed namespace label on %q", ns)
+			}
+		}
+	}
+
 	// Recover all sandboxes.
 	sandboxes, err := c.client.Containers(ctx, filterLabel(containerKindLabel, containerKindSandbox))
 	if err != nil {

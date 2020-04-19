@@ -42,5 +42,9 @@ func NamespacedContext() context.Context {
 
 // WithNamespace adds kubernetes namespace to the context.
 func WithNamespace(ctx context.Context) context.Context {
-	return namespaces.WithNamespace(ctx, constants.K8sContainerdNamespace)
+	_, ok := namespaces.Namespace(ctx)
+	if !ok {
+		ctx = namespaces.WithNamespace(ctx, constants.K8sContainerdNamespace)
+	}
+	return ctx
 }

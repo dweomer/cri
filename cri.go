@@ -18,9 +18,10 @@ package cri
 
 import (
 	"flag"
+	"path/filepath"
+
 	"github.com/containerd/containerd/remotes"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-	"path/filepath"
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/api/services/containers/v1"
@@ -61,7 +62,7 @@ func init() {
 }
 
 type ResolverFactory interface {
-	 GetResolver(auth *runtime.AuthConfig) remotes.Resolver
+	GetResolver(auth *runtime.AuthConfig) remotes.Resolver
 }
 
 var Resolver ResolverFactory
@@ -96,7 +97,6 @@ func initCRIService(ic *plugin.InitContext) (interface{}, error) {
 	log.G(ctx).Info("Connect containerd service")
 	client, err := containerd.New(
 		"",
-		containerd.WithDefaultNamespace(constants.K8sContainerdNamespace),
 		containerd.WithServices(servicesOpts...),
 	)
 	if err != nil {

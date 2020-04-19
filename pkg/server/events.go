@@ -17,6 +17,7 @@ limitations under the License.
 package server
 
 import (
+	"path"
 	"sync"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	containerdio "github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
+	"github.com/containerd/cri/pkg/constants"
 	"github.com/containerd/typeurl"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
@@ -32,7 +34,6 @@ import (
 	"golang.org/x/net/context"
 	"k8s.io/apimachinery/pkg/util/clock"
 
-	"github.com/containerd/cri/pkg/constants"
 	ctrdutil "github.com/containerd/cri/pkg/containerd/util"
 	"github.com/containerd/cri/pkg/store"
 	containerstore "github.com/containerd/cri/pkg/store/container"
@@ -65,6 +66,7 @@ type eventMonitor struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	backOff *backOff
+	nsm     map[string]bool
 }
 
 type backOff struct {
@@ -95,6 +97,7 @@ func newEventMonitor(c *criService) *eventMonitor {
 		cancel:  cancel,
 		exitCh:  make(chan *eventtypes.TaskExit, exitChannelSize),
 		backOff: newBackOff(),
+		nsm:     map[string]bool{constants.K8sContainerdNamespace: true},
 	}
 }
 
@@ -103,6 +106,7 @@ func (em *eventMonitor) subscribe(subscriber events.Subscriber) {
 	// note: filters are any match, if you want any match but not in namespace foo
 	// then you have to manually filter namespace foo
 	filters := []string{
+		`topic~="/namespaces/"`,
 		`topic=="/tasks/oom"`,
 		`topic~="/images/"`,
 	}
@@ -183,8 +187,24 @@ func (em *eventMonitor) start() <-chan error {
 					em.backOff.enBackOff(id, e)
 				}
 			case e := <-em.ch:
+				if scope, _ := path.Split(e.Topic); scope == "/namespaces/" {
+					decoded, err := typeurl.UnmarshalAny(e.Event)
+					if err != nil {
+						logrus.WithField("topic", e.Topic).WithField("ns", e.Namespace).WithError(err).Error("Failed to decode namespace event %#v", e.Event)
+					}
+					switch t := decoded.(type) {
+					case *eventtypes.NamespaceDelete:
+						em.nsm[t.Name] = false
+					case *eventtypes.NamespaceCreate:
+						em.nsm[t.Name] = t.Labels[criContainerdPrefix] == `managed`
+					case *eventtypes.NamespaceUpdate:
+						em.nsm[t.Name] = t.Labels[criContainerdPrefix] == `managed`
+					}
+					break
+				}
+
 				logrus.Debugf("Received containerd event timestamp - %v, namespace - %q, topic - %q", e.Timestamp, e.Namespace, e.Topic)
-				if e.Namespace != constants.K8sContainerdNamespace {
+				if !em.nsm[e.Namespace] {
 					logrus.Debugf("Ignoring events in namespace - %q", e.Namespace)
 					break
 				}
