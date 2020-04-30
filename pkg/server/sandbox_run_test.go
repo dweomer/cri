@@ -202,7 +202,7 @@ func TestGenerateSandboxContainerSpec(t *testing.T) {
 		},
 	} {
 		t.Logf("TestCase %q", desc)
-		c := newTestCRIService()
+		c, ctx := newTestCRIService()
 		config, imageConfig, specCheck := getRunPodSandboxTestData()
 		if test.configChange != nil {
 			test.configChange(config)
@@ -211,7 +211,7 @@ func TestGenerateSandboxContainerSpec(t *testing.T) {
 		if test.imageConfigChange != nil {
 			test.imageConfigChange(imageConfig)
 		}
-		spec, err := c.generateSandboxContainerSpec(testID, config, imageConfig, nsPath,
+		spec, err := c.generateSandboxContainerSpec(ctx, testID, config, imageConfig, nsPath,
 			test.podAnnotations)
 		if test.expectErr {
 			assert.Error(t, err)
@@ -396,7 +396,7 @@ options timeout:1
 		},
 	} {
 		t.Logf("TestCase %q", desc)
-		c := newTestCRIService()
+		c, _ := newTestCRIService()
 		c.os.(*ostesting.FakeOS).HostnameFn = func() (string, error) {
 			return realhostname, nil
 		}
@@ -832,8 +832,8 @@ func TestGetSandboxRuntime(t *testing.T) {
 		},
 	} {
 		t.Run(desc, func(t *testing.T) {
-			cri := newTestCRIService()
-			cri.config = criconfig.Config{
+			cri, _ := newTestCRIService()
+			cri.config = serviceConfig{
 				PluginConfig: criconfig.DefaultConfig(),
 			}
 			cri.config.ContainerdConfig.DefaultRuntimeName = criconfig.RuntimeDefault
@@ -847,9 +847,9 @@ func TestGetSandboxRuntime(t *testing.T) {
 
 func TestSandboxDisableCgroup(t *testing.T) {
 	config, imageConfig, _ := getRunPodSandboxTestData()
-	c := newTestCRIService()
+	c, ctx := newTestCRIService()
 	c.config.DisableCgroup = true
-	spec, err := c.generateSandboxContainerSpec("test-id", config, imageConfig, "test-cni", []string{})
+	spec, err := c.generateSandboxContainerSpec(ctx, "test-id", config, imageConfig, "test-cni", []string{})
 	require.NoError(t, err)
 
 	t.Log("resource limit should not be set")
