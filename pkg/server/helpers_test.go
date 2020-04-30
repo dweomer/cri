@@ -114,39 +114,6 @@ func TestGetRepoDigestAndTag(t *testing.T) {
 	}
 }
 
-func TestGetCgroupsPath(t *testing.T) {
-	testID := "test-id"
-	for desc, test := range map[string]struct {
-		cgroupsParent string
-		expected      string
-	}{
-		"should support regular cgroup path": {
-			cgroupsParent: "/a/b",
-			expected:      "/a/b/test-id",
-		},
-		"should support systemd cgroup path": {
-			cgroupsParent: "/a.slice/b.slice",
-			expected:      "b.slice:cri-containerd:test-id",
-		},
-		"should support tailing slash for regular cgroup path": {
-			cgroupsParent: "/a/b/",
-			expected:      "/a/b/test-id",
-		},
-		"should support tailing slash for systemd cgroup path": {
-			cgroupsParent: "/a.slice/b.slice/",
-			expected:      "b.slice:cri-containerd:test-id",
-		},
-		"should treat root cgroup as regular cgroup path": {
-			cgroupsParent: "/",
-			expected:      "/test-id",
-		},
-	} {
-		t.Logf("TestCase %q", desc)
-		got := getCgroupsPath(test.cgroupsParent, testID)
-		assert.Equal(t, test.expected, got)
-	}
-}
-
 func TestBuildLabels(t *testing.T) {
 	configLabels := map[string]string{
 		"a": "b",
@@ -189,7 +156,7 @@ func TestLocalResolve(t *testing.T) {
 		},
 		Size: 10,
 	}
-	c := newTestCRIService()
+	c, _ := newTestCRIService()
 	var err error
 	c.imageStore, err = imagestore.NewFakeStore([]imagestore.Image{image})
 	assert.NoError(t, err)
@@ -312,7 +279,7 @@ systemd_cgroup = true
 		},
 	} {
 		t.Run(desc, func(t *testing.T) {
-			opts, err := generateRuntimeOptions(test.r, test.c)
+			opts, err := generateRuntimeOptions(test.r, test.c.PluginConfig)
 			assert.NoError(t, err)
 			assert.Equal(t, test.expectedOptions, opts)
 		})

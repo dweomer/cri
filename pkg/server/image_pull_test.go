@@ -229,7 +229,7 @@ func TestRegistryEndpoints(t *testing.T) {
 		},
 	} {
 		t.Logf("TestCase %q", desc)
-		c := newTestCRIService()
+		c, _ := newTestCRIService()
 		c.config.Registry.Mirrors = test.mirrors
 		got, err := c.registryEndpoints(test.host)
 		assert.NoError(t, err)
