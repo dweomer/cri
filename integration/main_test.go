@@ -35,7 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
-	"k8s.io/cri-api/pkg/apis"
+	cri "k8s.io/cri-api/pkg/apis"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/kubelet/remote"
 	kubeletutil "k8s.io/kubernetes/pkg/kubelet/util"
@@ -48,7 +48,7 @@ import (
 
 const (
 	timeout      = 1 * time.Minute
-	pauseImage   = "k8s.gcr.io/pause:3.1" // This is the same with default sandbox image.
+	pauseImage   = "k8s.gcr.io/pause:3.2" // This is the same with default sandbox image.
 	k8sNamespace = constants.K8sContainerdNamespace
 )
 

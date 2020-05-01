@@ -17,7 +17,12 @@ limitations under the License.
 package server
 
 import (
+	"context"
+
+	"github.com/containerd/containerd/namespaces"
+
 	criconfig "github.com/containerd/cri/pkg/config"
+	"github.com/containerd/cri/pkg/constants"
 	ostesting "github.com/containerd/cri/pkg/os/testing"
 	"github.com/containerd/cri/pkg/registrar"
 	servertesting "github.com/containerd/cri/pkg/server/testing"
@@ -39,10 +44,10 @@ const (
 )
 
 // newTestCRIService creates a fake criService for test.
-func newTestCRIService() *criService {
+func newTestCRIService() (*criService, context.Context) {
 	labels := label.NewStore()
 	return &criService{
-		config: criconfig.Config{
+		config: serviceConfig{
 			RootDir:  testRootDir,
 			StateDir: testStateDir,
 			PluginConfig: criconfig.PluginConfig{
@@ -58,5 +63,5 @@ func newTestCRIService() *criService {
 		containerStore:     containerstore.NewStore(labels),
 		containerNameIndex: registrar.NewRegistrar(),
 		netPlugin:          servertesting.NewFakeCNIPlugin(),
-	}
+	}, namespaces.WithNamespace(context.Background(), constants.K8sContainerdNamespace)
 }
