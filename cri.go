@@ -18,8 +18,6 @@ package cri
 
 import (
 	"flag"
-	"github.com/containerd/containerd/remotes"
-	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"path/filepath"
 
 	"github.com/containerd/containerd"
@@ -33,11 +31,13 @@ import (
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/plugin"
+	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/services"
 	"github.com/containerd/containerd/snapshots"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/klog"
 
 	criconfig "github.com/containerd/cri/pkg/config"
@@ -47,12 +47,14 @@ import (
 
 // TODO(random-liu): Use github.com/pkg/errors for our errors.
 // Register CRI service plugin
+
+var Config = criconfig.DefaultConfig()
+
 func init() {
-	config := criconfig.DefaultConfig()
 	plugin.Register(&plugin.Registration{
 		Type:   plugin.GRPCPlugin,
 		ID:     "cri",
-		Config: &config,
+		Config: &Config,
 		Requires: []plugin.Type{
 			plugin.ServicePlugin,
 		},
@@ -61,7 +63,7 @@ func init() {
 }
 
 type ResolverFactory interface {
-	 GetResolver(auth *runtime.AuthConfig) remotes.Resolver
+	GetResolver(auth *runtime.AuthConfig) remotes.Resolver
 }
 
 var Resolver ResolverFactory
